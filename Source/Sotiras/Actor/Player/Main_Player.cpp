@@ -8,7 +8,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
-
+#include "Components/BoxComponent.h"
 
 AMain_Player::AMain_Player()
 {
@@ -16,17 +16,23 @@ AMain_Player::AMain_Player()
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>("SpringArm");
 	SpringArm->SetupAttachment(RootComponent);
-	SpringArm->TargetArmLength = 400.f;
+	SpringArm->TargetArmLength = 800.f;
 	SpringArm->bUsePawnControlRotation = true;
 
 	MainCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	MainCamera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 	MainCamera->bUsePawnControlRotation = false;
+
+	SetCurMaxHP(DefaultMaxHP);
 }
 
 void AMain_Player::BeginPlay()
 {
 	Super::BeginPlay();
+
+	AttackCollider = FindComponentByClass<UBoxComponent>();
+	AttackCollider->OnComponentBeginOverlap.AddDynamic(this, &AMain_Player::OnAttackOverlapBegin);
+	AttackCollider->OnComponentEndOverlap.AddDynamic(this, &AMain_Player::OnAttackOverlapEnd);
 	
 	if (auto _PlayerController = Cast<APlayerController>(GetController())) {
 		if (auto _Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(_PlayerController->GetLocalPlayer())) {
@@ -39,6 +45,10 @@ void AMain_Player::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	if (IsAttackCoolTime) {
+		AttackCoolTimeTimer += DeltaTime;
+		if (AttackCoolTimeTimer >= 1) IsAttackCoolTime = false;
+	}
 }
 
 void AMain_Player::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -49,8 +59,13 @@ void AMain_Player::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		EIC->BindAction(IA_Move, ETriggerEvent::Triggered, this, &AMain_Player::InputMove);
 		EIC->BindAction(IA_Camera, ETriggerEvent::Triggered, this, &AMain_Player::InputCamera);
 		EIC->BindAction(IA_Jump, ETriggerEvent::Started, this, &AMain_Player::InputJump);
+		EIC->BindAction(IA_Attack, ETriggerEvent::Started, this, &AMain_Player::InputAttack);
 	}
+}
 
+bool AMain_Player::Hit(float Damage)
+{
+	return false;
 }
 
 void AMain_Player::InputMove(const FInputActionValue& Value)
@@ -72,3 +87,35 @@ void AMain_Player::InputJump(const FInputActionValue& Value)
 	Jump();
 }
 
+void AMain_Player::InputAttack(const FInputActionValue& Value)
+{
+	if (!IsAttackCoolTime) {
+		IsAttackCoolTime = true;
+		AttackCoolTimeTimer = 0.0f;
+
+		AttackHitCheck();
+	}
+}
+
+void AMain_Player::OnAttackOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (auto Hitable = Cast<IHitable>(OtherActor)) {
+		AttackOverlapedObjects.Add(OtherActor);
+	}
+}
+
+void AMain_Player::OnAttackOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	if (auto Hitable = Cast<IHitable>(OtherActor)) {
+		AttackOverlapedObjects.Remove(OtherActor);
+	}
+}
+
+void AMain_Player::AttackHitCheck()
+{
+	if (IsAttackCoolTime && AttackOverlapedObjects.Num()) {
+		for (int i = 0; i < AttackOverlapedObjects.Num(); i++) {
+			if (Cast<IHitable>(AttackOverlapedObjects[i])->Hit(2)) i--;
+		}
+	}
+}
