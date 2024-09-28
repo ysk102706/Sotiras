@@ -8,7 +8,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
-#include "Components/BoxComponent.h"
+#include "Components/BoxComponent.h" 
+#include "Skill/PlayerSkillComponent.h"
 
 AMain_Player::AMain_Player()
 {
@@ -24,11 +25,13 @@ AMain_Player::AMain_Player()
 	MainCamera->bUsePawnControlRotation = false;
 
 	SetCurMaxHP(DefaultMaxHP);
+	
+	Init(); 
 }
 
 void AMain_Player::BeginPlay()
 {
-	Super::BeginPlay();
+	Super::BeginPlay(); 
 
 	AttackCollider = FindComponentByClass<UBoxComponent>();
 	AttackCollider->OnComponentBeginOverlap.AddDynamic(this, &AMain_Player::OnAttackOverlapBegin);
@@ -43,7 +46,7 @@ void AMain_Player::BeginPlay()
 
 void AMain_Player::Tick(float DeltaTime)
 {
-	Super::Tick(DeltaTime);
+	Super::Tick(DeltaTime); 
 
 	if (IsAttackCoolTime) {
 		AttackCoolTimeTimer += DeltaTime;
@@ -60,12 +63,20 @@ void AMain_Player::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		EIC->BindAction(IA_Camera, ETriggerEvent::Triggered, this, &AMain_Player::InputCamera);
 		EIC->BindAction(IA_Jump, ETriggerEvent::Started, this, &AMain_Player::InputJump);
 		EIC->BindAction(IA_Attack, ETriggerEvent::Started, this, &AMain_Player::InputAttack);
+		EIC->BindAction(IA_Dash, ETriggerEvent::Started, this, &AMain_Player::InputCommonSkill);
+		EIC->BindAction(IA_Parrying, ETriggerEvent::Started, this, &AMain_Player::InputCommonSkill);
+		EIC->BindAction(IA_SelectAttribute, ETriggerEvent::Started, this, &AMain_Player::InputCommonSkill);
 	}
 }
 
 bool AMain_Player::Hit(float Damage)
 {
 	return false;
+}
+
+void AMain_Player::HitEffect()
+{
+	GEngine->AddOnScreenDebugMessage(-1, 5, FColor::Red, TEXT("Player Hit"));
 }
 
 void AMain_Player::InputMove(const FInputActionValue& Value)
@@ -97,6 +108,11 @@ void AMain_Player::InputAttack(const FInputActionValue& Value)
 	}
 }
 
+void AMain_Player::InputCommonSkill(const FInputActionValue& Value)
+{
+	PlayerSkillComponent->UseSkill(ESkillType::CommonSkill, Value.Get<float>()); 
+}
+
 void AMain_Player::OnAttackOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	if (auto Hitable = Cast<IHitable>(OtherActor)) {
@@ -109,6 +125,22 @@ void AMain_Player::OnAttackOverlapEnd(UPrimitiveComponent* OverlappedComponent, 
 	if (auto Hitable = Cast<IHitable>(OtherActor)) {
 		AttackOverlapedObjects.Remove(OtherActor);
 	}
+}
+
+void AMain_Player::Init()
+{ 
+	InitComponents();
+} 
+
+void AMain_Player::InitComponents()
+{ 
+	PlayerSkillComponent = CreateDefaultSubobject<UPlayerSkillComponent>(TEXT("PlayerSkillComponent")); 
+	PlayerSkillComponent->Init(this);
+}
+
+FVector AMain_Player::GetForwardVector()
+{
+	return MainCamera->GetForwardVector();
 }
 
 void AMain_Player::AttackHitCheck()

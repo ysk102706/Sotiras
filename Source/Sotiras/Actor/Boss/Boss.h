@@ -3,23 +3,23 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h" 
-#include "../Interface/Hitable.h"
-#include "TestMonster.generated.h"
+#include "GameFramework/Actor.h"
+#include "../Interface/Hitable.h" 
+#include "Boss.generated.h"
 
 UCLASS()
-class SOTIRAS_API ATestMonster : public AActor, public IHitable
+class SOTIRAS_API ABoss : public AActor, public IHitable
 {
 	GENERATED_BODY()
 	
 public:	
-	ATestMonster();
+	ABoss();
 	virtual void BeginPlay() override; 
 	virtual void Tick(float DeltaTime) override;
 
-	virtual bool Hit(float Damage) override; 
+	virtual bool Hit(float Damage) override;
+	virtual void HitEffect() override;
 
 	UPROPERTY(EditAnywhere, Category = Stat)
-	float DefaultMaxHP; 
-
+	float DefaultMaxHP;
 };

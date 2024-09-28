@@ -7,6 +7,14 @@
 #include "../Interface/Hitable.h"
 #include "Main_Player.generated.h"
 
+UENUM(BlueprintType) 
+enum ETechnicType { 
+	Sword	UMETA(DisplayName = "Sword"), 
+	Mutu	UMETA(DisplayName = "Mutu"), 
+	Bow		UMETA(DisplayName = "Bow"), 
+	Magic	UMETA(DisplayName = "Magic") 
+};
+
 UCLASS()
 class SOTIRAS_API AMain_Player : public ACharacter, public IHitable
 {
@@ -19,6 +27,7 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	virtual bool Hit(float Damage) override;
+	virtual void HitEffect() override;
 
 	UFUNCTION()
 	void InputMove(const FInputActionValue& Value);
@@ -27,12 +36,19 @@ public:
 	UFUNCTION()
 	void InputJump(const FInputActionValue& Value);
 	UFUNCTION()
-	void InputAttack(const FInputActionValue& Value);
+	void InputAttack(const FInputActionValue& Value); 
+	UFUNCTION() 
+	void InputCommonSkill(const FInputActionValue& Value);
 
 	UFUNCTION()
 	void OnAttackOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 	UFUNCTION()
 	void OnAttackOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+
+	void Init();
+	void InitComponents();
+
+	FVector GetForwardVector();
 
 	void AttackHitCheck();
 
@@ -45,22 +61,32 @@ public:
 	UPROPERTY(EditAnywhere, Category = Input)
 	TObjectPtr<class UInputAction> IA_Jump;
 	UPROPERTY(EditAnywhere, Category = Input)
-	TObjectPtr<class UInputAction> IA_Attack;
+	TObjectPtr<class UInputAction> IA_Attack; 
+	UPROPERTY(EditAnywhere, Category = Input)
+	TObjectPtr<class UInputAction> IA_Dash;
+	UPROPERTY(EditAnywhere, Category = Input)
+	TObjectPtr<class UInputAction> IA_Parrying; 
+	UPROPERTY(EditAnywhere, Category = Input)
+	TObjectPtr<class UInputAction> IA_SelectAttribute;
+
 
 	UPROPERTY(EditAnywhere, Category = Stat)
 	float DefaultMaxHP;
 
 private:
-	UPROPERTY()
+	UPROPERTY(EditAnywhere, Category = Camera)
 	TObjectPtr<class USpringArmComponent> SpringArm;
-	UPROPERTY()
-	TObjectPtr<class UCameraComponent> MainCamera;
+	UPROPERTY(EditAnywhere, Category = Camera)
+	TObjectPtr<class UCameraComponent> MainCamera; 
+
+	UPROPERTY() 
+	TObjectPtr<class UPlayerSkillComponent> PlayerSkillComponent; 
 
 	UPROPERTY()
 	TObjectPtr<class UBoxComponent> AttackCollider;
 
 	bool IsAttackCoolTime;
 	float AttackCoolTimeTimer;
-	TArray<TObjectPtr<AActor>> AttackOverlapedObjects;
+	TArray<TObjectPtr<AActor>> AttackOverlapedObjects; 
 
 };
